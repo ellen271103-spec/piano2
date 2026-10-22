@@ -1,0 +1,335 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>어린이 피아노 (클래식)</title>
+    <!-- Tailwind CSS (모달 및 기본 유틸리티용) -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Google Fonts: Jua (한글 가독성) -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Jua&display=swap" rel="stylesheet">
+
+    <style>
+        * {
+            box-sizing: border-box;
+            /* 모바일 기기에서 확대, 텍스트 선택, 스크롤 완벽 차단 */
+            touch-action: none; 
+            user-select: none;
+            -webkit-user-select: none;
+            -webkit-touch-callout: none;
+        }
+
+        html, body {
+            margin: 0;
+            padding: 0;
+            width: 100vw;
+            height: 100vh;
+            font-family: 'Jua', sans-serif;
+            background-color: #222; /* 피아노 뒷배경(본체) 느낌 */
+            overflow: hidden;
+        }
+
+        /* 피아노 건반 컨테이너 */
+        #piano {
+            position: relative;
+            width: 100%;
+            height: 100%;
+            display: flex;
+            background-color: #111;
+        }
+
+        /* 흰 건반 (8개, 각각 12.5% 너비 차지) */
+        .key.white {
+            flex: 1;
+            height: 100%;
+            background-color: #ffffff;
+            border: 1px solid #ccc;
+            border-bottom-left-radius: 8px;
+            border-bottom-right-radius: 8px;
+            display: flex;
+            justify-content: center;
+            align-items: flex-end;
+            padding-bottom: 20px;
+            box-shadow: inset 0 -4px 5px rgba(0,0,0,0.1), 0 2px 2px rgba(0,0,0,0.2);
+            cursor: pointer;
+            z-index: 1;
+        }
+
+        /* 흰 건반 눌림 효과 */
+        .key.white.active {
+            background-color: #e5e7eb; /* 연한 회색 */
+            box-shadow: inset 0 -1px 2px rgba(0,0,0,0.2);
+            transform: translateY(2px);
+        }
+
+        /* 검은 건반 (5개, 절대 위치) */
+        .key.black {
+            position: absolute;
+            top: 0;
+            width: 7%; /* 흰 건반(12.5%)보다 좁게 설정 */
+            height: 60%; /* 흰 건반 높이의 60% */
+            background: linear-gradient(to bottom, #333 0%, #000 100%);
+            border-bottom-left-radius: 6px;
+            border-bottom-right-radius: 6px;
+            box-shadow: inset 0 -4px 4px rgba(255,255,255,0.2), 2px 2px 5px rgba(0,0,0,0.5);
+            cursor: pointer;
+            z-index: 2; /* 흰 건반 위로 오도록 설정 */
+            transform: translateX(-50%); /* 정확히 선 중앙에 오도록 축 이동 */
+        }
+
+        /* 검은 건반 눌림 효과 */
+        .key.black.active {
+            background: linear-gradient(to bottom, #222 0%, #000 100%);
+            box-shadow: inset 0 -1px 2px rgba(255,255,255,0.1), 1px 1px 2px rgba(0,0,0,0.5);
+            height: 59.5%; /* 미세하게 눌린 느낌 */
+        }
+
+        /* 계이름 텍스트 (흰 건반 전용) */
+        .note-name {
+            font-size: clamp(1.5rem, 4vw, 3rem);
+            color: #333;
+        }
+
+        /* QR 버튼 및 모달 스타일 */
+        #qr-btn {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            background-color: #ffffff;
+            border: 2px solid #ccc;
+            border-radius: 8px;
+            padding: 8px 16px;
+            font-size: 1rem;
+            color: #333;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.3);
+            cursor: pointer;
+            z-index: 50;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            font-family: 'Jua', sans-serif;
+        }
+        #qr-modal {
+            display: none;
+            position: fixed;
+            top: 0; left: 0; width: 100vw; height: 100vh;
+            background-color: rgba(0, 0, 0, 0.75);
+            z-index: 100;
+            justify-content: center;
+            align-items: center;
+        }
+        #qr-content {
+            background-color: white;
+            padding: 30px;
+            border-radius: 12px;
+            text-align: center;
+            max-width: 90%;
+            width: 450px;
+            position: relative;
+        }
+        #qr-image {
+            width: 200px;
+            height: 200px;
+            margin: 0 auto 20px auto;
+            border: 1px solid #eee;
+            padding: 10px;
+        }
+    </style>
+</head>
+<body>
+
+    <!-- 피아노 영역 -->
+    <div id="piano">
+        <!-- 흰 건반 (8개) -->
+        <div class="key white" data-note="C4"><span class="note-name">도</span></div>
+        <div class="key white" data-note="D4"><span class="note-name">레</span></div>
+        <div class="key white" data-note="E4"><span class="note-name">미</span></div>
+        <div class="key white" data-note="F4"><span class="note-name">파</span></div>
+        <div class="key white" data-note="G4"><span class="note-name">솔</span></div>
+        <div class="key white" data-note="A4"><span class="note-name">라</span></div>
+        <div class="key white" data-note="B4"><span class="note-name">시</span></div>
+        <div class="key white" data-note="C5"><span class="note-name">도</span></div>
+
+        <!-- 검은 건반 (5개) : 각 흰 건반의 경계선(12.5% 단위)에 배치 -->
+        <!-- 도-레 사이 -->
+        <div class="key black" data-note="Cs4" style="left: 12.5%;"></div> 
+        <!-- 레-미 사이 -->
+        <div class="key black" data-note="Ds4" style="left: 25%;"></div>
+        <!-- 파-솔 사이 -->
+        <div class="key black" data-note="Fs4" style="left: 50%;"></div>
+        <!-- 솔-라 사이 -->
+        <div class="key black" data-note="Gs4" style="left: 62.5%;"></div>
+        <!-- 라-시 사이 -->
+        <div class="key black" data-note="As4" style="left: 75%;"></div>
+    </div>
+
+    <!-- QR 코드 버튼 -->
+    <button id="qr-btn">
+        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect><rect x="7" y="7" width="3" height="3"></rect><rect x="14" y="7" width="3" height="3"></rect><rect x="7" y="14" width="3" height="3"></rect><rect x="14" y="14" width="3" height="3"></rect></svg>
+        QR 열기
+    </button>
+
+    <!-- QR 코드 모달창 -->
+    <div id="qr-modal">
+        <div id="qr-content">
+            <button id="close-modal" class="absolute top-3 right-4 text-2xl text-gray-500 font-bold">&times;</button>
+            <h2 class="text-2xl mb-4 text-gray-800 font-bold">접속 QR 코드</h2>
+            <img id="qr-image" src="" alt="QR Code">
+            <p id="qr-message" class="text-lg text-gray-700 break-keep"></p>
+        </div>
+    </div>
+
+    <script>
+        /* ============================
+           1. 오디오 주파수 설정 (Web Audio API)
+        ============================ */
+        const noteFrequencies = {
+            // 흰 건반
+            'C4': 261.63, 'D4': 293.66, 'E4': 329.63, 'F4': 349.23,
+            'G4': 392.00, 'A4': 440.00, 'B4': 493.88, 'C5': 523.25,
+            // 검은 건반
+            'Cs4': 277.18, 'Ds4': 311.13, 'Fs4': 369.99, 'Gs4': 415.30, 'As4': 466.16
+        };
+
+        let audioContext = null;
+        const activeOscillators = new Map(); // 다중 터치(화음) 지원을 위한 Map
+
+        function initAudio() {
+            if (!audioContext) {
+                audioContext = new (window.AudioContext || window.webkitAudioContext)();
+            }
+            if (audioContext.state === 'suspended') {
+                audioContext.resume();
+            }
+        }
+
+        function playNote(note) {
+            initAudio();
+            if (!audioContext || !noteFrequencies[note]) return;
+            // 이미 해당 건반의 소리가 나고 있으면 중복 실행 방지
+            if (activeOscillators.has(note)) return; 
+
+            const freq = noteFrequencies[note];
+            const osc = audioContext.createOscillator();
+            const gainNode = audioContext.createGain();
+
+            osc.type = 'triangle'; // 실제 피아노에 가까운 부드러운 소리
+            osc.frequency.setValueAtTime(freq, audioContext.currentTime);
+
+            // 자연스러운 소리 시작과 끝 처리 (Envelope)
+            gainNode.gain.setValueAtTime(0, audioContext.currentTime);
+            gainNode.gain.linearRampToValueAtTime(1, audioContext.currentTime + 0.02);
+            gainNode.gain.exponentialRampToValueAtTime(0.3, audioContext.currentTime + 0.2);
+
+            osc.connect(gainNode);
+            gainNode.connect(audioContext.destination);
+
+            osc.start();
+            // 활성화된 오실레이터 저장
+            activeOscillators.set(note, { osc, gainNode });
+        }
+
+        function stopNote(note) {
+            if (activeOscillators.has(note)) {
+                const { osc, gainNode } = activeOscillators.get(note);
+                
+                // 건반에서 손을 뗄 때 소리가 뚝 끊기지 않도록 여운을 줌
+                gainNode.gain.cancelScheduledValues(audioContext.currentTime);
+                gainNode.gain.setValueAtTime(gainNode.gain.value, audioContext.currentTime);
+                gainNode.gain.exponentialRampToValueAtTime(0.001, audioContext.currentTime + 0.1); 
+                
+                osc.stop(audioContext.currentTime + 0.1);
+                activeOscillators.delete(note);
+            }
+        }
+
+        /* ============================
+           2. 터치 및 마우스 이벤트 처리 (멀티 터치 완벽 지원)
+        ============================ */
+        const keys = document.querySelectorAll('.key');
+
+        const handlePress = (e, key) => {
+            // QR 버튼이나 모달 등을 터치했을 때는 피아노 건반이 눌리지 않도록 함
+            if(e.target.closest('#qr-btn') || e.target.closest('#qr-modal')) return;
+            e.preventDefault(); // 기본 이벤트(스크롤, 줌 등) 방지
+            
+            if (!key.classList.contains('active')) {
+                key.classList.add('active');
+                playNote(key.getAttribute('data-note'));
+            }
+        };
+
+        const handleRelease = (e, key) => {
+            e.preventDefault();
+            if (key.classList.contains('active')) {
+                key.classList.remove('active');
+                stopNote(key.getAttribute('data-note'));
+            }
+        };
+
+        // 각 건반에 독립적으로 이벤트 리스너 부착
+        keys.forEach(key => {
+            // 태블릿 터치 이벤트
+            key.addEventListener('touchstart', (e) => handlePress(e, key), { passive: false });
+            key.addEventListener('touchend', (e) => handleRelease(e, key), { passive: false });
+            key.addEventListener('touchcancel', (e) => handleRelease(e, key), { passive: false });
+
+            // PC 마우스 테스트용 이벤트
+            key.addEventListener('mousedown', (e) => handlePress(e, key));
+            key.addEventListener('mouseup', (e) => handleRelease(e, key));
+            key.addEventListener('mouseleave', (e) => handleRelease(e, key));
+        });
+
+        // 화면 꾹 누르고 있을 때 우클릭 메뉴 뜨는 것 방지
+        document.addEventListener('contextmenu', event => event.preventDefault());
+
+        /* ============================
+           3. QR 코드 환경 체크 및 모달 로직
+        ============================ */
+        const qrBtn = document.getElementById('qr-btn');
+        const qrModal = document.getElementById('qr-modal');
+        const closeModal = document.getElementById('close-modal');
+        const qrImage = document.getElementById('qr-image');
+        const qrMessage = document.getElementById('qr-message');
+
+        qrBtn.addEventListener('click', () => {
+            const currentUrl = window.location.href;
+            const hostname = window.location.hostname;
+            
+            // 로컬환경(임시 미리보기 화면)인지 체크
+            const isLocal = hostname.includes('googleusercontent') || 
+                            hostname.includes('blob') || 
+                            hostname.includes('localhost') || 
+                            hostname === '127.0.0.1' || 
+                            window.location.protocol === 'blob:' ||
+                            hostname === '';
+
+            if (isLocal) {
+                // 임시 주소일 경우 경고 메시지 표시 및 가짜 QR 생성 (https://placehold.co 사용)
+                qrImage.src = `https://placehold.co/200x200/f3f4f6/a8a29e?text=No+QR`;
+                qrMessage.innerHTML = `<span class="text-red-500 font-bold text-xl">⚠️ 현재 미리보기 화면입니다.</span><br><br>아이들의 태블릿에서 접속하려면 이 코드를 복사하여 <b>Tiiny.host</b> 같은 무료 호스팅에 업로드해야 합니다.`;
+            } else {
+                // 실제 인터넷 주소일 경우 정상적인 QR 코드 생성
+                qrImage.src = `https://api.qrserver.com/v1/create-qr-code/?size=250x250&data=${encodeURIComponent(currentUrl)}`;
+                qrMessage.innerHTML = `<span class="text-blue-600 font-bold text-xl">✨ 준비 완료!</span><br><br>학생들의 태블릿 카메라로 이 QR을 스캔하세요.`;
+            }
+
+            qrModal.style.display = 'flex';
+        });
+
+        // 모달 닫기 이벤트
+        closeModal.addEventListener('click', () => {
+            qrModal.style.display = 'none';
+        });
+
+        qrModal.addEventListener('click', (e) => {
+            if (e.target === qrModal) {
+                qrModal.style.display = 'none';
+            }
+        });
+
+    </script>
+</body>
+</html>
